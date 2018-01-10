@@ -1,0 +1,348 @@
+---
+title: "New York City Stop-Question-Frisk Analysis"
+output: pdf_document
+author: "Daniel Bashir, Jonathan Hayase, Mazda Moayeri, Alicia Ngo"
+date: "13 December 2016"
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, dev="png", dpi=600)
+library(ggplot2)
+library(plyr)
+library(reshape2)
+library(GGally)
+library(gridExtra)
+library(scales)
+sqf2010 = read.csv("2010_sqf_m35.csv")
+sqf2015 = read.csv("2015_sqf_m35.csv")
+```
+
+# 1. Introduction
+
+Stop-question-frisk is a policy in New York that allows police officers to stop, question, and frisk pedestrians for contraband. Every time a police officer uses this policy, the officer must complete forms about the stop. The stop-question-frisk dataset for 2010 is based off of these forms. The dataset includes information about race, stop time, whether the person was frisked, etc.
+
+
+From the NYCLU paper, we examined two statistical statements. First, we checked whether Black and Latino New Yorkers were more likely to be frisked than white New Yorkers and, among those frisked, whether they were less likely to be found with a weapon. Second, we checked whether 52 percent of those stopped were frisked, and of those frisked, whether a weapon was found only 2 percent of the time. We found that both statements were true.
+
+
+For the first statement, we saw that Black and Latino New Yorkers are disproportionately frisked, but less likely to have a weapon, thereby demonstrating that police officers may be racially profiling through SQF. For the second statement, we see that over half of suspects stopped were frisked, though very few suspects had weapons, thereby demonstrating that police officers may be unreasonably frisking suspects.
+
+
+Throughout the rest of this report, we will provide our statistical analysis of these two statements and provide our reasons for recommending the discontinuation of SQF.
+
+
+# 2. Responses to Required Questions
+
+## Question I.
+
+### Statement
+
+> Because all of the data provided are reported by the police officers who stopped
+> the suspects, it is possible that there is misreported data. For example, an officer may
+> misidentify an Asian/Pacific Islander as Hispanic, or vice-versa. We would like to explore
+> what effect such misidentifications can have on the collected data. To simplify our analysis,
+> we will only consider the subset of the data for which suspects were identified as Asian/Pacific
+> Island or Hispanic. Suppose that a Hispanic person has a 95\% chance of correctly being
+> identified as Hispanic, and otherwise is misidentified as Asian/Pacific Islander, and an
+> Asian/Pacific Islander has a 95\% chance of correctly being identified as Asian/Pacific Islander,
+> and otherwise is misidentified as Hispanic. Using this subset of the 2010 data, determine
+> the probability that a stopped suspect is Hispanic and the probability that a stopped suspect is
+> Asian/Pacific Islander. Use this to determine the probability that someone who is identified
+> by the officer as Hispanic is actually Hispanic and the probability that someone who is identified
+> as Asian/Pacific Islander is actually Asian/Pacific Islander. What does this say about
+> how we utilize the `race` column of the data?
+
+### Answer
+
+In the first part of this problem, we have two unknowns - the actual proportions of Hispanics and Asian/Pacific Islanders. We can set up an equation for each reported amount of people identified as a certain demographic, giving us two equations with two unknowns. The probability that a stopped suspect is Hispanic is 26.2%. The probability that a stopped suspect is Asian/Pacific Islander (API) is 2.1%. From here, we can apply Bayes’ rule for conditional probabilities to determine the other desired quantities. The probability that someone who identified by the officer as Hispanic is actually Hispanic is 99.73%, leaving a very small false positive of 0.27%. The probability that someone who is identified as API is actually API is 49.6%, an extremely high false positive rate of 50.4%. Curiously, both demographics are equally recognizable in the sense that 95% of each group will have their demographic correctly reported. However, since the Hispanic group is so much larger, the 5% of misidentified Hispanics makes up for over 50% of Asian/Pacific Islander group, while the 5% of misidentified Asian/Pacific Islanders only causes a .27% false positive.
+
+
+## Question II.
+
+### Statement
+
+> Compare the rates at which suspects stopped in 2010 were frisked, broken down by race. Are
+> the differences in rates between the various groups statistically significant? Which borough(s)
+> had the largest differences? The smallest?
+
+### Answer
+
+The following t-tests were significant in comparing the frisking rate by race: Whites had a significantly smaller probability of being frisked when compared to every other demographic group. Most groups had significant differences in their respective probabilities of being frisked, with black hispanics having the highest probability, followed by White Hispanics, Blacks, Natives, and finally, Asian/Pacific Islanders (in that order). Natives and Asian/Pacific Islanders did not have a significant difference in probabilities, however. When broken down by city, we found that there were significant differences in rates between every borough except Brooklyn and Manhattan. The order (from highest rate to lowest)  was Bronx, Queens, Brooklyn, Manhattan, Staten Island. When looking at demographics in each borough, we found that the Bronx had 28% greater proportion of minorities (blacks and hispanics) than Staten Island, which was consistent with the conclusions from the earlier part of the problem. 
+
+## Question III.
+
+### Statement 
+
+> Compare the distribution of ages for male suspects in 2010 with the distribution of
+ages for female suspects in 2010. Use `qqnorm` to determine if they
+> are normally distributed, and compare them with each other by usingg
+> `qqplot`. Are the age distributions the same? Compare the age
+> distribution for male suspects to that of the entire population of suspects that were stopped
+> in 2010.
+> Type `?qqplot` for help on how to use the command.
+> Note that some ages are reported as 0 or 999 if the officer did not know the age, so you may
+> want to throw out the extraneous data first.
+
+### Answer
+
+
+```{r, echo=F}
+# Remove outliers
+age_data <- sqf2010[sqf2010$age < 99,]
+age_data <- age_data[age_data$age > 5,]
+
+# Throw out non-binary genders. (Why??)
+age_data <- age_data[is.element(age_data$sex, c("M", "F")),]
+
+# Add combined data for both genders
+age_data_combined <- age_data
+age_data_combined$sex <- "Combined"
+age_data_combined <- rbind(age_data, age_data_combined)
+
+g <- grid.arrange(
+  # Comparative ditribution plot (Histogram)
+  ggplot(melt(age_data_combined[,c("age", "sex")], id.vars = "sex")) +
+    geom_histogram(aes(x = value, 
+                      y = 3*(..density..)/sum(..density..), 
+                      fill = sex), 
+                   binwidth = 5,
+                   position = "dodge") +
+    scale_y_continuous(labels=percent_format()) +
+    scale_fill_grey() + 
+    theme_classic() + 
+    labs(title = "Age Distribution vs. Sex (Histogram)",
+        x = "age",
+        y = "density"),
+  
+  # Comparative distribution plot (Quantiles)
+  ggplot(age_data_combined) +
+    stat_qq(aes(sample = age, colour = factor(sex)),
+            size=0.2) +
+    scale_color_grey(name = "sex") +
+    theme_classic() +
+    ggtitle("(Quantiles)"),
+
+  nrow = 2
+)
+```
+
+The distributions appear similar, with subtle differences. The shapes of the distribution appear approximately equivalent, and the distributions do not appear normal. The distribution for male pedestrians is much more similar to the overall distribution, because more than ten times as many males were stopped as females. However despite this, the distribution of ages for female pedestrians is also very close to the combined and male distributions.
+
+## Question IV.
+
+### Statement
+
+> Find the probability, with a 95\% confidence interval,
+> that a suspect was frisked (a) for the entire population in 2015, and (b)
+> for suspects in 2015 who refused to provide identification, and determine whether suspects who refused to
+> provide identification had a different probability of being frisked than the population
+> at large.
+
+### Answer
+
+The 95% confidence interval for the probability that a person is frisked is $(0.670, 0.682)$. However, when we restrict the sample to only pedestrians who refused to provide and ID, the probability that the 95% confidence interval for the probability the person is frisked becomes $(0.572, 0.648)$.
+
+```{r, echo=F}
+n_everyone = length(sqf2015$frisked)
+p_hat_everyone = sum(sqf2015$frisked)/n_everyone
+s_sem_everyone = sqrt(p_hat_everyone * (1 - p_hat_everyone) / (n_everyone - 1))
+
+id_refused <- sqf2015[sqf2015$typeofid == "REFUSED",]$frisked
+n_refused = length(id_refused)
+p_hat_refused = sum(id_refused)/n_refused
+s_sem_refused = sqrt(p_hat_refused * (1 - p_hat_refused) / (n_refused - 1))
+
+# since the sample size is large, we may assume that the
+# distribution of p_hat is normally distributed
+z_critical = abs(qnorm(0.025))
+
+df <- data.frame(
+  sample=factor(c(0,0)),
+  group=factor(c(1,2)),
+  mean = c(p_hat_everyone, p_hat_refused),
+  upper = c(p_hat_everyone + s_sem_everyone * z_critical,
+            p_hat_refused + s_sem_refused * z_critical),
+  lower = c(p_hat_everyone - s_sem_everyone * z_critical,
+            p_hat_refused - s_sem_refused * z_critical)
+)
+
+g <- ggplot(df, aes(mean, sample, color = group)) +
+  geom_errorbarh(aes(xmin=lower, 
+                     xmax=upper, 
+                     height=0.6)) +
+  scale_color_grey(name = "Sample",
+                   breaks = c(1,2),
+                   labels=c("Population", "Refused ID")) +
+  theme_classic() + 
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  labs(title = "Probability of being Frisked (95% Confidence Intervals)",
+       x = "probability",
+       y = "") +
+  xlim(0,1)
+
+g + coord_fixed(1/10)
+```
+
+```{r, echo=F, eval=F}
+# So, the interval is:
+c(p_hat_everyone - s_sem_everyone * z_critical, 
+  p_hat_everyone + s_sem_everyone * z_critical)
+c(p_hat_refused - s_sem_refused * z_critical, 
+  p_hat_refused + s_sem_refused * z_critical)
+```
+
+As the two probability regions are disjoint, we may conclude with at least 95% confidence that the probability of being frisked after refusing identification is not the same as the probability of being frisked overall.
+
+## Question V.
+
+### Statement
+
+> For the 2010 data, decide which of the following binary factors: `arstmade`, `searched`,
+> `inside`, `sumissue`, `frisked`, `weap`, `contrabn`
+> `radio`, `pf` had a significant effect on the length of the stop (`perstop`) by using linear regression. Make sure to check your residuals for normality, and apply an
+> appropriate transformation to `perstop` or remove outlier points if it does not look normal (see your notes from Lecture 11 to review how to do this). Note that
+> `perstop` is a discrete variable, so you are looking for an approximately
+> normal distribution for the residuals.
+> Consider the p-values for the coefficients and the $R^2$ value for your regression model. What do they indicate about how the factors
+> affect the length of the stop? Recall that $R^2 = \frac{SSR}{SST}$. How much of
+> the variability in `perstop` is due to the explanatory variables you have selected?
+> Why does this make sense?
+
+### Answer
+
+```{r, echo=F}
+ggplot_qqline <- function (vec) # argument: vector of numbers
+{
+  # Credit to: http://stackoverflow.com/a/4357932/2580133
+  # following four lines from base R's qqline()
+  y <- quantile(vec[!is.na(vec)], c(0.25, 0.75))
+  x <- qnorm(c(0.25, 0.75))
+  slope <- diff(y)/diff(x)
+  int <- y[1L] - slope * x[1L]
+
+  geom_abline(slope = slope, intercept = int)
+}
+
+lmdata <- sqf2010[sqf2010$perstop < 120,]
+lmdata <- lmdata[lmdata$perstop > 0,]
+lmdata$perstop = log(lmdata$perstop) 
+lm1 <- lm(perstop ~ arstmade + searched + inside + sumissue + frisked + weap + contrabn + radio + pf, data=lmdata)
+slm1 = step(lm1)
+summary(slm1)
+
+rdata <- residuals(slm1)
+df <- data.frame(residuals = rdata)
+
+# Plot distribution for residuals
+g <- ggplot(df) + theme_classic()
+g <- grid.arrange(
+  # Histogram
+  g + geom_histogram(aes(x = residuals,
+                         y = (..density..)/sum(..density..)),
+                    binwidth=0.3) +
+    scale_y_continuous("density", labels=percent_format()) +
+    ggtitle("Linear Model Residuals (Histogram)"),
+  
+  # Normal QQ Plot
+  g + stat_qq(aes(sample = residuals)) + 
+    ggplot_qqline(rdata) + 
+    ggtitle("(Quantiles)"),
+  nrow = 2
+)
+```
+
+We conclude that all of the binary factors except the presence of a weapon had a significant effect on the stop period. We concluded that the distribution of residuals for our best-fit model may be roughly approximated by a normal distribution. This indicates that the stop period was influenced largely by factors that did not directly have an effect on the safety of the cop. The R2 value is very small, at approximately 0.049, which means that these variables explain about 5% of the variation in stop period. This makes sense because we wouldn’t expect a handful of binary variables to contain enough information to determine the period of the stop. 
+
+# Chosen Questions
+
+## Question I.
+
+### Statement
+
+> Black and Latino New Yorkers were more likely to be frisked than white New Yorkers and, among those frisked, were less likely to be found with a weapon.
+
+### Analysis
+
+This question is important because it illustrates two things: First, Black and Latino New Yorkers are disproportionately frisked in general. Second, this disproportionate frisking does not correlate with how many of them have weapons. As a result, these frisks may not be based on accurate evaluations. 
+
+```{r, echo=F}
+data = ddply(sqf2010, .(race), summarise, 
+             probfrisk = mean(frisked))
+g <- ggplot(data) +
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 70, 
+                                   hjust=1, 
+                                   size=rel(0.85)))
+
+a <- g + geom_bar(stat = "identity", 
+                  aes(race, probfrisk)) +
+  labs(x = "Race", 
+       y = "Probability of Being Frisked") +
+  ggtitle("Probability of Being Frisked by Race")
+a
+```
+
+```{r, echo=F}
+data2 = ddply(sqf2010[sqf2010$frisked == 1,], .(race), summarise, 
+             probweap = mean(weap))
+
+g2 <- ggplot(data2) +
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 70, 
+                                   hjust=1, 
+                                   size=rel(0.85)))
+
+b <- g2 + geom_bar(stat = "identity", 
+                   aes(race, probweap)) +
+  labs(x = "Race", 
+       y = "Probability of Having a Weapon") +
+  ggtitle("Weapon Posession by Race (Frisked Pedestrians)")
+b
+```
+
+In our analysis, we found that 58% of Blacks and Hispanics were frisked, while 44% of Whites were frisked. We also confirmed the statement that Black and Latino New Yorkers who were frisked were less likely to be found with a weapon than whites. Of those frisked, 2.0% of Blacks/Hispanics had a weapon, while 4.0% of Whites had a weapon. A bar graph shows that overall, the probability that someone who was frisked had a weapon was higher for Whites than for any other race. 
+
+## Question II. 
+
+### Statement
+
+> 52 percent of those stopped were frisked. Of those frisked, a weapon was found only 2 percent of the time. And police officers conducted frisks in one-half of the 4.4 million stops of innocent people.
+
+### Analysis
+
+This question indicates that the NY police officers may have been quite liberal with frisking, and that the decision to frisk could be based on assumptions and inaccurate evaluations in general. Although the report claimed 52% of those stopped were frisked, we found that 56% of those stopped were frisked. We found that of those frisked, 2.1% had weapons, which is very similar to the 2% that the report claimed. 
+
+## Question III. 
+
+### Statement
+
+> A statistical study of nearly 4.5 million stops produced at trial showed that only 6 percent of stops resulted in arrests and 6 percent resulted in summonses
+
+### Analysis 
+
+Our analysis of the third statement shows that in 2010, about 7% of stops resulted in arrests, and about the same percentage resulted in a summons. This confirms the following statement in the article that most of the people who were stopped “had been doing nothing wrong.” 
+
+# Conclusions and Recommendations 
+
+We found that all statements seem to be fairly accurate. For reference, the three statements are provided below again.
+
+
+1. > Black and Latino New Yorkers were more likely to be frisked than white New Yorkers and, among those frisked, were less likely to be found with a weapon.
+2. > 52 percent of those stopped were frisked. Of those frisked, a weapon was found only 2 percent of the time. And police officers conducted frisks in one-half of the 4.4 million stops of innocent people.
+3. > A statistical study of nearly 4.5 million stops produced at trial showed that only 6 percent of stops resulted in arrests and 6 percent resulted in summonses
+
+It appears that the SQF program is not very effective in finding people with weapons, and as a result may not be able to significantly reduce crime rates. Also, only a small number of stops resulted in arrests, suggesting that many stops were unnecessary. In addition, it appears that Blacks and Hispanics are disproportionately stopped and frisked, thereby suggesting that racial profiling has occurred. Thus, we recommend that the SQF program be discontinued. 
+
+# Bibliography 
+
+Christopher, Dunn. "Stop and Frisk During the Bloomberg Administration." New York Civil 
+Liberties Union (2014): n. pag. New York Civil Liberties Union. New York Civil Liberties 
+Union, Aug. 2014. Web. 8 Dec. 2016. <http://www.nyclu.org/files/publications/stopandfrisk_briefer_2002-2013_final.pdf>.
+
+
+The Editorial Board. "Policing the Police on Stop-and-Frisk." The New York Times. The New 
+York Times, 22 June 2016. Web. 12 Dec. 2016. 
+<http://www.nytimes.com/2016/06/23/opinion/policing-the-police-on-stop-and-frisk.html?_r=0>.

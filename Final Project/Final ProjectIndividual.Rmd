@@ -1,0 +1,159 @@
+---
+title: "Final Project Individual Analysis"
+author: "Jonathan Hayase, Section 3, 2016/12/03"
+due: "2016/12/05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, dev="png", dpi=600)
+library(ggplot2)
+library(plyr)
+library(reshape2)
+library(GGally)
+library(gridExtra)
+```
+
+# Loading the Data
+
+```{r}
+sqf2010 = read.csv("2010_sqf_m35.csv")
+sqf2015 = read.csv("2015_sqf_m35.csv")
+```
+
+# Summarize the Data
+
+```{r}
+head(sqf2010)
+summary(sqf2010)
+dim(sqf2010)
+dim(sqf2015)
+```
+
+# Bar Plots and Box Plots
+
+```{r}
+data = ddply(sqf2010, .(race), summarise, 
+             median_age = median(age), 
+             median_weight = median(weight),
+             median_height = median(height))
+data.melted <- melt(data, id.vars="race")
+c <- ggplot(data.melted, aes(x = race, y = value, fill=factor(variable)))
+c + geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_discrete(name="Variable",
+                      breaks=c("median_age", "median_weight", "median_height"),
+                      labels=c("Median age", "Median weight", "Median height")) +
+  theme_light() + 
+  theme(axis.text.x = element_text(angle = 70, hjust=1, size=rel(0.7)))
+```
+
+```{r}
+# Or we can do a separate barplot
+g <- ggplot(data) +
+  theme_light() + 
+  theme(axis.text.x = element_text(angle = 70, hjust=1, size=rel(0.7)))
+a <- g + geom_bar(stat = "identity", aes(race, median_age))
+b <- g + geom_bar(stat = "identity", aes(race, median_weight))
+c <- g + geom_bar(stat = "identity", aes(race, median_height))
+grid.arrange(a, b, c, ncol = 3)
+```
+
+```{r}
+boxdata <- sqf2010[,c("race", "age", "weight", "height")]
+boxdata <- subset(boxdata, boxdata$age < 100)
+boxdata <- subset(boxdata, boxdata$weight < 300)
+boxdata.melted = melt(boxdata, id.vars="race")
+g <- ggplot(boxdata.melted, aes(x = race, y = value, fill=factor(variable)))
+g + geom_boxplot() +
+    theme_light() + 
+  #facet_wrap(~variable) + 
+  theme(axis.text.x = element_text(angle = 70, 
+                                   hjust=1,
+                                   size=rel(0.7))) +
+  scale_fill_brewer(palette="Reds")
+```
+
+```{r}
+# Or we can do separate boxplots
+g <- ggplot(boxdata) + 
+    theme_light() +
+    theme(axis.text.x = element_text(angle = 70, 
+                                     hjust=1, 
+                                     size=rel(0.7)))
+a <- g + geom_boxplot(aes(race, age))
+b <- g + geom_boxplot(aes(race, weight))
+c <- g + geom_boxplot(aes(race, height))
+grid.arrange(a, b, c, ncol=3)
+```
+
+# Pairwise Plots
+
+```{r}
+pairdata <- sqf2010[,c("age", "weight", "height", "perobs", "perstop")]
+pairdata <- subset(pairdata, pairdata$age < 100)
+pairdata <- subset(pairdata, pairdata$weight < 300)
+pairdata <- subset(pairdata, pairdata$perstop < 120)
+pairdata <- subset(pairdata, pairdata$perobs < 120)
+#pairdata <- pairdata[sample(nrow(pairdata), 1000),]
+my_fn <- function(data, mapping, ...){
+  p <- ggplot(data = data, mapping = mapping) + 
+    geom_point() + 
+    geom_smooth(method=lm, fill="blue4", color="blue1", ...)
+  p
+}
+ggpairs(pairdata, lower=list(continuous=my_fn))
+```
+
+# Histograms and QQ Plots
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(sqf2010$age[sqf2010$age < 100], 
+     main="Age", xlab="Age")
+qqnorm(sqf2010$age[sqf2010$age < 100])
+qqline(sqf2010$age[sqf2010$age < 100])
+
+hist(sqf2010$weight[sqf2010$weight < 300],
+     main="Weight", xlab="Weight")
+qqnorm(sqf2010$weight[sqf2010$weight < 300])
+qqline(sqf2010$weight[sqf2010$weight < 300])
+
+hist(sqf2010$height, main="Height", xlab="Height")
+qqnorm(sqf2010$height)
+qqline(sqf2010$height)
+
+hist(sqf2010$perobs[sqf2010$perobs < 120], 
+     main="Observation Period",
+     xlab="Observation Period")
+qqnorm(sqf2010$perobs[sqf2010$perobs < 120])
+qqline(sqf2010$perobs[sqf2010$perobs < 120])
+
+hist(sqf2010$perstop[sqf2010$perstop < 120], 
+     main="Stop Period",
+     xlab="Stop Period")
+qqnorm(sqf2010$perstop[sqf2010$perstop < 120])
+qqline(sqf2010$perstop[sqf2010$perstop < 120])
+```
+```{r}
+table(sqf2010$race, sqf2010$haircolr)
+table(sqf2010$typeofid, sqf2010$sex)
+table(sqf2010$city, sqf2010$location)
+table(sqf2010$race, sqf2010$eyecolor)
+table(sqf2010$city, sqf2010$haircolr)
+```
+
+# Binary Variables
+
+```{r}
+# So if I weren't lazy and had to actually perform a t-test, 
+# I would use a paired t-test over Y = (X$weap[X$age > 30] - X$pf[X$age <= 30]), 
+# computing the mean and standard error of Y, and performing a t-test on Y != 0.
+bintestdata = subset(sqf2010, sqf2010$age < 100)
+t.test(bintestdata$weap[bintestdata$age > 30], 
+       bintestdata$pf[bintestdata$age <= 30], 
+       alternative="two.sided")
+```
+
+

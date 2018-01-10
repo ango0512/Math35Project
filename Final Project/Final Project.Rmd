@@ -1,0 +1,75 @@
+---
+title: "Final Project"
+author: "Jonathan Hayase"
+date: "December 1, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+goog = read.csv("http://stat.duke.edu/courses/Spring12/sta101.1/labs/goog.csv")
+```
+
+```{r}
+summary(goog)
+plot(goog)
+```
+
+```{r}
+goog[which.max(goog$pop),]
+```
+
+```{r}
+goog_sub = subset(goog, goog$country != "india")
+plot(goog_sub)
+```
+
+```{r}
+round(cor(goog_sub[,c(2,3,4,5,7,8)]),2)
+```
+
+```{r}
+m_full = lm(complied ~ requests + pop + hdi + dem + internet + freepress, data=goog_sub)
+summary(m_full)
+```
+
+
+```{r}
+m_full2 = lm(complied ~ requests + pop + hdi + dem, data=goog_sub)
+summary(m_full2)
+```
+
+```{r}
+m_full3 = lm(complied ~  pop + hdi , data=goog_sub)
+summary(m_full3)
+```
+
+```{r}
+m_best =step(m_full)
+m_best
+```
+```{r}
+plot(m_best$fitted.values, goog_sub$complied)
+```
+
+```{r}
+which(goog_sub$country == "united states")
+goog_sub[goog_sub$country == "united states",]
+```
+```{r}
+predict(m_best, interval="confidence")
+predict(m_best, interval="prediction")
+```
+
+```{r}
+hist(m_best$residuals)
+qqnorm(m_best$residuals)
+qqline(m_best$residuals)
+```
+
+```{r}
+summary(m_best)
+```

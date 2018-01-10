@@ -1,0 +1,326 @@
+---
+title: "Final Project: New York City Stop-Question-Frisk Analysis"
+author: "Math 35"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(eval=FALSE)
+knitr::opts_chunk$set(warning=FALSE)
+knitr::opts_chunk$set(message=FALSE)
+library(kernlab)
+data(spam)
+```
+
+**Purpose:** 
+
+This project will give you the opportunity to apply the techniques learned in Math 35 to a *real* and *sizeable* data set.  Moreover, you will use these techniques to draw conclusions about the efficacy of a controversial crime policy: the stop-question-frisk (SQF), also known as stop-and-frisk, program, in New York City.
+
+
+**Background:**
+
+In stop-question-frisk, a police officer is authorized to stop a pedestrian, question them, and then frisk their body searching for contraband items such as weapons or drugs.  The motivation for the policy was to prevent crimes from happening in the first place, though recent studies by the New York Civil Liberties Union suggest the policy did not achieve noticeable reductions in crime, after controlling for nationwide declining crime rates. For example, NYCLU estimates that guns were found in fewer than 0.2\% of stops.  Moreover, the policy was found to be discriminatory because Blacks and Latinos were stopped disproportionately more than their participation in crime would suggest. (Since 2014, new restrictions have limited the use of SQF, and the numbers of SQF incidents have decreased precipitously.)
+
+Data from New York City's stop-question-frisk (SQF) program is publicly available online.
+Whenever a person is stopped under SQF, the officer is required to fill out a form with
+information about the stop. Each year, the data is compiled and released by the city.
+Since the data from the form has over 100 columns, we will be giving you a version of the data
+that has been simplified to 24 of the most interesting fields. Every SQF stop from 2010
+and 2015 is still represented in the data. If you are interested, you can find the
+full data set at:
+http://www.nyc.gov/html/nypd/html/analysis_and_planning/stop_question_and_frisk_report.shtml.
+However, for this project, please **only use the version of the SQF data that has been
+provided for the course**.
+
+**Instructions:** 
+
+1. **Individual Portion - Due in class on Tuesday December 6 - 15\% of Grade**
+
+The purpose of this individual portion is to help you get familiar with the data prior to class on Tuesday.
+
+Complete the following tasks on your own, using R. You do not need a formal writeup,
+but please submit your R code, either as an RMarkdown file, an R script file, or as a
+printout of your input and output from the R console.
+
+a. **Loading the Data**
+
+First, download the necessary files for the project by running
+```{r,eval=F}
+source("https://www.math.hmc.edu/m35f/FinalLoader.R")
+```
+This will download the `2010_sqf_m35.csv` and `2015_sqf_m35.csv` files, which contain
+the SQF data from 2010 and 2015, respectively, and `NewYorkSQF.R`, which contains the initial commands for getting setup.
+
+To load the data from the files into R, run the commands
+```{r,eval=F}
+sqf2010 = read.csv("2010_sqf_m35.csv")
+sqf2015 = read.csv("2015_sqf_m35.csv")
+```
+These will load the 2010 and 2015 SQF data into the data frames `sqf2010` and `sqf2015`,
+respectively. If you close R and want to reload the data, you will first want to set your
+working directory to the `Math35` folder within your `Documents` folder, which is where the
+`2010_sqf_m35.csv` and `2015_sqf_m35.csv` files are located. To do so without having
+to download the .csv files again by re-running the `source()` command above, you can
+run the following code, which is at the top of the `NewYorkSQF.R` file:
+```{r,eval=F}
+setwd('~')
+if(regexpr('Documents',getwd())==-1) {
+  if(!dir.exists('~/Documents')) dir.create('~/Documents')
+  setwd('~/Documents')
+}
+if(!dir.exists('Math35')) dir.create('Math35')
+setwd('Math35')
+```
+
+
+Below is a key for the fields (columns) in the data frame.
+
+Column name | Description
+------------|---------------------------------------------------------------
+datestop    | Date of the stop in MMDDYYYY format
+timestop    | Time of the stop in HHMM format, where HH is in 24 hour format
+sex         | Sex of the suspect
+race        | Race of the suspect
+age         | Age of the suspect
+weight      | Weight of the suspect
+haircolr    | Hair color of the suspect
+eyecolor    | Eye color of the suspect
+build       | Suspect's build
+city        | City (borough) of New York City in which stop occurred
+inside      | Stop was made inside (1) or outside (0)
+location    | Was location of the stop at a transit authority or housing authority?
+typeofid    | Type of ID provided by suspect
+perobs      | Period of observation, in minutes
+perstop     | Period of stop, in minutes (In the 2015 data, R reads the column in as factors, i.e. categorical data, instead of numeric. Run `sqf2015$perstop <- as.numeric(sqf2015$perstop)` to convert it to numeric data.)
+arstmade    | Was an arrest made? (1=yes, 0=no)
+sumissue    | Was a summons issued?  (1=yes, 0=no)
+frisked     | Was the suspect frisked?  (1=yes, 0=no)
+searched    | Was the suspect searched? (1=yes, 0=no)
+contrabn    | Was contraband found on the suspect?  (1=yes, 0=no)
+radio       | Was there a radio run?  (1=yes, 0=no)
+height      | Height of the suspect, in inches
+pf          | Was physical force used by the officer (including hands, weapons drawn, baton, handcuffs, pepper spray)?  (1=yes, 0=no)
+weap        | Was a weapon (pistol, knife, assualt rifle, machine gun, or other) found on the suspect? (1=yes, 0=no)
+
+
+b. **Summarize the Data**
+
+Use the ``head``, ``summary``, and ``dim`` commands to get an initial look at the
+contents of the data.  How many entries are in the 2010 data? How many entries are in the 2015 data?
+
+For the rest of the problems in this preliminary section, choose either the 2010
+or 2015 data. You may want to refer to Lecture 7 on Exploratory Data Analysis
+for the necessary commands to complete this section.
+
+c.  **Bar Plots and Box Plots**
+
+Choose at least two of the quantitative columns and make a comparison bar plot over
+the categories in another column. Repeat with box plots instead of bar plots.
+
+d.  **Pairwise Plots**
+
+Make pairwise plots, with correlations calculated, of the quantitative columns and determine which columns (if any) seem linearly related. Use linear regression to check the strength of the relationship (see Lecture 11-12 for linear regressions).
+
+e.  **Histograms and QQ Plots**
+
+Use histograms of the quantitative columns to determine which, if any, are normally
+distributed. Use QQ-plots to verify. You may notice that several of the columns
+have outlier points which you may want to ignore to obtain a histogram that is
+easier to read. You can use a Boolean expression to filter data so you only keep
+the reasonable data points. For example, to look at only the ages in the 2010 data
+that are below 100, we can use:
+```{r,eval=F}
+sqf2010$age[sqf2010$age<100]
+```
+
+f.  **Categorical Data**
+
+For non-quantitative (categorical) data, we will need another way to dissect the data based
+on categories. We can use the ``table()`` command to compare one column with another.
+Type `?table()` to see how to use the command. To compare the number of arrests in 
+2010 for each race, type:
+```{r, eval=F}
+table(sqf2010$arstmade,sqf2010$race)
+```
+Try some other comparisons with the non-quantitative data to see if you can find any
+interesting relationships.
+
+g. **Binary Variables**
+
+Several of the non-quantitative binary variables have been expressed as 1 for "Yes"
+and "0" for no. We will see that this is convenient if we want to compare the
+results for two subgroups of the SQF data to see if they are different. For example,
+if we want to compare the arrest rates for people with gray hair versus people with
+salt and pepper hair, we can first make vectors for each subgroup that tell us
+whether each person was arrested or not.
+```{r,eval=F}
+arrestsGrayHair <- sqf2015$arstmade[sqf2015$haircolr=="GRAY"]
+arrestsSPHair <- sqf2015$arstmade[sqf2015$haircolr=="SALT AND PEPPER"]
+```
+The means for each subgroup now represents the arrest rate for the group (why?).
+We can now use a two-sample T-test to determine if their means (= arrest rates) are
+different. Try this on the data with variables of your choice and find at least one
+pair of (binary variable and two categories) where the rates for the two groups are
+different with 95\% confidence. You may want to refer to Lecture 10 for how to
+conduct a two-sample T-test.
+
+
+
+2. **Mandatory Classroom Attendance - Tuesday/Thursday December 6/8 - 10\% of Grade**
+
+You will complete the project in groups of four, which will be determined on Tuesday,
+December 6. Class time on Tuesday, December 6 and Thursday, December 8 will be allocated
+for you to work with your group. Therefore, **attendance on these days will be mandatory
+and count as 10\% of your project grade**.
+
+3. **Team Report - Due Tuesday December 13 by 5 PM - 50\% of Grade**
+
+Working in teams of four, write a report that presents your statistical analysis in response to the  set of required questions given here (20\%), and in response to a set of questions that interests you as a team (30\%).  Use appropriate graphical and statistical methods to justify your responses to the questions.  Please refer to the section on Project Evaluation Criteria below for information on how to structure your report.
+
+**Required Questions - 20\% of Grade**
+
+The purpose of these problems is to remind you of and to assess your ability to use the
+main statistical tools that we have discussed in Math 35. You will be asked to
+use these tools while exploring different parts of the SQF data.
+
+i. Because all of the data provided are reported by the police officers who stopped
+the suspects, it is possible that there is misreported data. For example, an officer may
+misidentify an Asian/Pacific Islander as Hispanic, or vice-versa. We would like to explore
+what effect such misidentifications can have on the collected data. To simplify our analysis,
+we will only consider the subset of the data for which suspects were identified as Asian/Pacific
+Island or Hispanic. Suppose that a Hispanic person has a 95\% chance of correctly being
+identified as Hispanic, and otherwise is misidentified as Asian/Pacific Islander, and an
+Asian/Pacific Islander has a 95\% chance of correctly being identified as Asian/Pacific Islander,
+and otherwise is misidentified as Hispanic. Using this subset of the 2010 data, determine
+the probability that a stopped suspect is Hispanic and the probability that a stopped suspect is
+Asian/Pacific Islander. Use this to determine the probability that someone who is identified
+by the officer as Hispanic is actually Hispanic and the probability that someone who is identified
+as Asian/Pacific Islander is actually Asian/Pacific Islander. What does this say about
+how we utilize the `race` column of the data?
+
+ii. Compare the rates at which suspects stopped in 2010 were frisked, broken down by race. Are
+the differences in rates between the various groups statistically significant? Which borough(s)
+had the largest differences? The smallest?
+
+iii. Compare the distribution of ages for male suspects in 2010 with the distribution of
+ages for female suspects in 2010. Use `qqnorm` to determine if they
+are normally distributed, and compare them with each other by usingg
+`qqplot`. Are the age distributions the same? Compare the age
+distribution for male suspects to that of the entire population of suspects that were stopped
+in 2010.
+Type `?qqplot` for help on how to use the command.
+Note that some ages are reported as 0 or 999 if the officer did not know the age, so you may
+want to throw out the extraneous data first.
+
+iv. Find the probability, with a 95\% confidence interval,
+that a suspect was frisked (a) for the entire population in 2015, and (b)
+for suspects in 2015 who refused to provide identification, and determine whether suspects who refused to
+provide identification had a different probability of being frisked than the population
+at large.
+
+v. For the 2010 data, decide which of the following binary factors: `arstmade`, `searched`,
+`inside`, `sumissue`, `frisked`, `weap`, `contrabn`
+`radio`, `pf` had a significant effect on the length of the stop (`perstop`) by using linear regression. Make sure to check your residuals for normality, and apply an
+appropriate transformation to `perstop` or remove outlier points if it does not look normal (see your notes from Lecture 11 to review how to do this). Note that
+`perstop` is a discrete variable, so you are looking for an approximately
+normal distribution for the residuals.
+Consider the p-values for the coefficients and the $R^2$ value for your regression model. What do they indicate about how the factors
+affect the length of the stop? Recall that $R^2 = \frac{SSR}{SST}$. How much of
+the variability in `perstop` is due to the explanatory variables you have selected?
+Why does this make sense?
+
+To answer this question, it is useful to understand how to interpret a regression model involving indicator variables.  Suppose you have an indicator variable $X$ that equals 1 when a condition is true and 0 otherwise, and you fit the following regression model: $$Y = \beta_0 + \beta_1 X + \epsilon$$  Note that when $X=0$, meaning that the condition is false, $Y = \beta_0 + \epsilon$, and when $X=1$, meaning that the condition is true, $Y = \beta_0 + \beta_1 + \epsilon$.  Therefore, $\beta_1$, the coefficient on $X$ in the regression model, gives the *average effect* that the condition has on the outcome.  That is $\beta_1$ equals the mean difference in the response when the condition is true compared to when it is false.  Our hypothesis is constructed in the same way as always: $H_0: \beta_1=0$ is the null hypothesis asserting that the condition has no effect on $Y$.  $H_a: \beta_1 \neq 0$ is the alternative hypothesis asserting that the condition has some effect on $Y$.  If the p-value on $\beta_1$ after we fit the regression model is smaller than our significance level $\alpha$, then we reject $H_0$ and conclude that the condition being true has a statistically significant effect on the value of $Y$.
+
+**Team-Chosen Questions - 30\% of Grade**
+
+In the second part of your report, your team will investigate questions about the data that are interesting to you as a team and of some broader importance to the assessment of SQF policies.  As reiterated below in the section on Project Evaluation Criteria, you are expected to formulate clear questions that are addressable within the data set, and provide answers to those questions that are substantiated by appropriate graphical and statistical analysis.
+
+To help you get started, here are some questions you might consider exploring:
+
+
+- Read through the NYCLU report referenced below. Choose a set of claims and verify if they are substantiated in your data set.  Also explain any assumptions you need to make in order for the claims to be substantiated, and assess whether they are reasonable assumptions.  Some examples of claims you could examine include: The NYCLU stated that fewer than 0.2\% of stops led to confiscation of a weapon.  They also stated that Blacks and Latinos were stopped disproportionately more often than other races, even relative to their participation in crime (as victims or perpetrators).   (You might need to find, and cite, other crime statistics  or demographic data to help conduct your analysis.)
+
+- Read through articles by proponents of SQF (such as the National Review op-ed referenced below). Choose a set of claims and verify if they are substantiated in your data set.  Also explain any assumptions you need to make in order for the claims to be substantiated, and assess whether they are reasonable assumptions. An example of a claim you could examine is that the policy helps minorities because they are most likely to be living in high-crime neighborhoods and themselves be victims of violent crimes. (You might need to find, and cite, other crime statistics  or demographic data to help conduct your analysis.)
+
+- Examine SQF rates by borough.  Compare those rates to demographic data available from the US Census Bureau.  Are people stopped in proportion to the demographic characteristics of the area?  Are they frisked in proportion to the demographic characteristics of the area?
+
+4. **Peer Evaluation - Due Tuesday December 13 by 5PM - 25\% of Grade**
+
+You will evaluate yourself and your teammates on the following axes:
+
+- Contributions to the statistical analysis
+
+- Contributions to the writing of the report
+
+- Punctuality, reliability
+
+- Respectfulness to all team members
+
+Complete the peer evaluation form at https://goo.gl/forms/QD3Lgf1Z1j7HEDjp2 by Tuesday December 13 at 5PM.
+
+
+**Project Evaluation Criteria**
+
+Your grade will consist of the following components:
+
+1. 15\% Individual work due on Tuesday, December 6  
+2. 10\% Attendance on Tuesday, December 6 and Thursday, December 8  
+3. 50\% Written report
+- 20\% Addressing required questions  
+- 30\% Addressing team-chosen questions  
+4. 25\% Peer evaluation
+
+
+The written report will be in the form of a paper of no more than 15 pages, including your answers to the
+required problems and any graphs. In addition, you will be asked to submit either an RMarkdown or .R script file
+containing all of the commands used for your analysis. **Please upload the file to your
+Sakai Drop Box in the Math 35 course website.** The file will be used to verify the output
+that produced your analysis, so please add enough comments to the file so that we can see
+which commands are relevant to each part of the analysis.
+
+You should write your report as if you are a statistical consultant hired by the New York Police Department to respond to their questions about the SQF policy.  Make clear references to figures as appropriate and offer answers to their questions in plain English. However, you may assume that the person you are writing for has knowledge of introductory probability and statistics.  You should NOT submit reams of statistical output; this should be a polished report, not a problem set.
+
+The report should have the following structure:
+
+1. Introduction (overview in your own words of the data; summary of your team's chosen question, why it's important, and what you found; roadmap for the remainder of the report.)
+
+2. Responses to required questions: Please list each question/answer separately, but write formal responses to the questions.
+
+3. Analysis of your chosen questions: Be sure to describe your questions and why they are interesting/important, and provide suitable graphical and statistical analysis of the data to answer the questions.
+
+4. Conclusions and Recommendations
+
+5. Bibliography if you use any external sources
+
+6. Appendices as necessary
+
+Your report will be evaluated based on the following criteria:
+
+- Writing: Structure of report; clarity of writing; quality of editing and polishing the document
+
+- Correctness of methodology: Appropriate graphical and statistical techniques are used to answer the questions
+
+- Validity of interpretation: The results are interpreted correctly
+
+- Significance: The team-chosen question(s) leverage the available data to provide insight into the stop-question-frisk policy.
+
+We encourage you to bring a draft of your report to the Writing Center for feedback.
+
+
+
+**A Final Note**
+
+The policy of SQF is a sensitive and charged one.  Some of you (or your teammates) may have had direct experience with the policy, perhaps in connection to your (or their) race or ethnicity.  A recent paper by Geller \textit{et al.} demonstrated the negative mental health impacts on those who have experienced SQF encounters.  By contrast, some of you (or your teammates) might support SQF.  As well-educated Mudders, all of us have a responsibility to use the analytical tools at our disposal to inform policy decisions, either through direct employment in public offices or as informed and engaged citizens/residents. As you explore this dataset, please challenge yourself to think critically about the data, and to operate in an atmosphere of respect with your teammates, classmates, and professors.
+
+**Bibliography**
+
+Barone, M., "Stop-and-Frisk Protects Minorities", http://www.nationalreview.com/article/356481/stop-and-frisk-protects-minorities-michael-barone, 2013.
+
+New York Civil Liberties Union website: http://www.nyclu.org/node/1598
+
+New York Civil Liberties Union, "Stop and Frisk During the Bloomberg Administration", http://www.nyclu.org/files/publications/stopandfrisk_briefer_2002-2013_final.pdf
+
+Geller, A., Fagan, J., Tyler, T., Link, B., "Aggressive Policing and the Mental Health of Young Urban Men", *Am J Public Health.* 2014 December; 104(12): 2321-2327.
+Published online 2014 December. doi:  10.2105/AJPH.2014.302046
+

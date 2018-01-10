@@ -1,0 +1,408 @@
+---
+title: "New York City Stop-Question-Frisk Analysis (R Source)"
+output: pdf_document
+author: "Daniel Bashir, Jonathan Hayase, Mazda Moayeri, Alicia Ngo"
+date: "13 December 2016"
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, dev="png", dpi=600)
+library(ggplot2)
+library(plyr)
+library(reshape2)
+library(GGally)
+library(gridExtra)
+library(scales)
+```
+
+# Loading the Data
+
+```{r}
+sqf2010 = read.csv("2010_sqf_m35.csv")
+sqf2015 = read.csv("2015_sqf_m35.csv")
+```
+
+# In-class Required Questions
+
+## Question I.
+
+```{r}
+table(sqf2010$race)
+
+# we have two unknowns and two eauqtions:
+# .95(total hispanics) + .05(total API) = total num identified as hispanic
+# .95(total API) + .05(total hispanics) = total num identified as API
+# we solve this system to see the results below
+
+totH <- 198748
+totAPI <- 10310.1
+
+# after doing these calcs, we see rateH = .262 and rateAPI = 0.021
+tot <- 601285
+rateH <- totH/tot
+rateAPI <- totAPI/tot
+
+# now we use bayes law
+rateCorrIdH <- .95
+rateIdH <- (150637+38689)/tot
+rateHgivenIdH <- rateCorrIdH*rateH/rateIdH
+
+# round 2
+rateCorrIdAPI <- .95
+rateIdAPI <- 19732/tot
+rateAPIgivenIdAPI <- rateCorrIdAPI*rateAPI/rateIdAPI
+
+# we found that the probability someone is actually hispanic given that they
+# were identified as a hispanic is 99.73%
+
+
+# since the hispanic group is much larger, the 5% of misidentified API people barely
+# makes a dent in the group identified as Hispanic. Thus, it is highly probable that 
+# someone identified as hispanic is actually hispanic.
+
+# Conversely, by looking at the table of races, we see that the true number of API people
+# is 9000 less than the number identified as API - almost 50%! This is becuase the hispanic 
+# group is just so much bigger, so the 5% of hispanics misidentified as API makes up a large 
+# portion of the group identified as API.
+
+
+# The value observed by just a quick look at the table is confirmed by analysis
+# applying Bayes' rule. We found that of the probability that someone is actually API
+# given that they are identified as API is 49.6% - that's tiny!!! That means over half 
+# the people identified as API are actually hispanic - a false positive rate of 50.4%.
+
+# After these analyses, we learn that we must take the statistics reported in the race table
+# (and honetly most other stats - mistakes can happen) must be taken with a grain of salt, as 
+# they may have high error rates.
+```
+
+## Question II.
+
+```{r}
+# let's take a quick first look at the demographic breakdown of frisk statistics 
+table(sqf2010$frisked, sqf2010$race)
+
+# this table only presents totals of occurrences of being frisked and occurrences
+# of not being frisked by race, which is not entirely helpful on it's own to make
+# conclusions -- we need more analysis.
+
+# What we can do is compare sample distributions of 1's and 0's and run a two sample
+# t-test that compares the true distributions. We do this because the mean of each 
+# distribution actually represents the rate at which each group is frisked. If we show 
+# one group's sample mean is significantly greater than another group's sample mean,
+# we can state with confidence that some demographic groups are more likely to be frisked than others.
+
+# here we collect distributions for each race. Each of the following vectors contains a list
+# of 1s and 0s. Type "friskedBL" and hit enter after running the following code for an example.
+friskedBL <-sqf2010$frisked[sqf2010$race=="BLACK"] 
+friskedWH <-sqf2010$frisked[sqf2010$race=="WHITE"]
+friskedBLH <-sqf2010$frisked[sqf2010$race=="BLACK-HISPANIC"]
+friskedH <-sqf2010$frisked[sqf2010$race=="WHITE-HISPANIC"]
+friskedAPI <-sqf2010$frisked[sqf2010$race=="ASIAN/PACIFIC ISLANDER"]
+friskedNative <-sqf2010$frisked[sqf2010$race=="AMERICAN INDIAN/ALASKAN NATIVE"]
+
+# Now we run our t-tests. While we may have some premonitions that certain groups are profiled over others
+# we will still run a two-sided test because any significant difference in frisk rates - even a surprising one
+# - will be in contrary to the null hypothesis claimed by SQF supporters that racial profiling is not practiced
+# or implemented in SQF. 
+
+# There are 15 (6 choose 2) tests to run.
+t.test(friskedH,friskedWH,alternative="two.sided")
+t.test(friskedBL,friskedWH,alternative="two.sided")
+t.test(friskedBLH,friskedWH,alternative="two.sided")
+t.test(friskedAPI,friskedWH,alternative="two.sided")
+t.test(friskedNative,friskedWH,alternative="two.sided")
+t.test(friskedBL,friskedH,alternative="two.sided")
+t.test(friskedBL,friskedBLH,alternative="two.sided")
+t.test(friskedBL,friskedAPI,alternative="two.sided")
+t.test(friskedBL,friskedNative,alternative="two.sided")
+t.test(friskedH,friskedBLH,alternative="two.sided")
+t.test(friskedH,friskedAPI,alternative="two.sided")
+t.test(friskedH,friskedNative,alternative="two.sided")
+t.test(friskedBLH,friskedAPI,alternative="two.sided")
+t.test(friskedBLH,friskedNative,alternative="two.sided")
+t.test(friskedNative,friskedAPI,alternative="two.sided")
+
+# See our final paper for a summarized version of the results.
+
+#The same method above will be applied to frisk rates broken down by borrough.
+
+#Below are data for frisk rates broken down by borrough. There are 
+#significant differences in rates between every borrough except BKN and MAN.
+#Order (from highest rate to lowest): BRX, QNS, BKN, MAN, STI
+#Biggest diff: BRX and STI
+#Smallest diff: BKN and MAN
+table(sqf2010$frisked,sqf2010$city)
+friskedBRONX <- sqf2010$frisked[sqf2010$city=="BRONX"]
+friskedBKN <- sqf2010$frisked[sqf2010$city=="BROOKLYN"]
+friskedQNS <- sqf2010$frisked[sqf2010$city=="QUEENS"]
+friskedSTI <- sqf2010$frisked[sqf2010$city=="STATEN IS"]
+friskedMAN <- sqf2010$frisked[sqf2010$city=="MANHATTAN"]
+t.test(friskedBRONX,friskedMAN)
+t.test(friskedBRONX,friskedBKN)
+t.test(friskedBRONX,friskedQNS)
+t.test(friskedBRONX,friskedSTI) #Biggest diff: BRX and STI
+t.test(friskedBKN,friskedMAN)
+t.test(friskedBKN,friskedQNS)
+t.test(friskedBKN,friskedSTI)
+t.test(friskedQNS,friskedMAN)
+t.test(friskedQNS,friskedSTI)
+t.test(friskedMAN,friskedSTI) #Smallest diff: BKN and MAN
+
+# let's check to see if there could be any correlations between demographics of a 
+# borrough and the rate at which its citizens are frisked. Let's check the two extremes:
+# Bronx and Staten Island
+
+table(sqf2010$race[sqf2010$city=="BRONX"])
+table(sqf2010$race[sqf2010$city=="STATEN IS"])
+
+# Both borroughs have a plurality of black residents, but when we look at the sum of black and 
+# hispanic residents, we find the following proportions
+
+minoritiesBRX <- 53987 + 12448 + 35778
+minoritiesSTI <- 11401 + 939 + 4953
+
+#table(sqf2010$city) # let's find out total populations
+totBRX <- 112415
+totSTI <- 27501
+
+propMinBRX <- minoritiesBRX/totBRX
+propMinSTI <- minoritiesSTI/totSTI
+propMinBRX <- 53987/totBRX # this turns out to be 48.0%
+propMinSTI <- 11401/totSTI # this turns out to be 41.5%
+
+# In lieu of doing another test, I will refer back to prior tests we ran in which differences in sample means
+# as small as 1% were significant. Here we have a difference of 6.5%. From our previous tests, we can comfortably
+# say that the there the minority group in BRX is much larger than the minority group in STI. 
+```
+
+## Question III.
+
+```{r}
+ggplot_qqline <- function (vec) # argument: vector of numbers
+{
+  # Credit to: http://stackoverflow.com/a/4357932/2580133
+  # following four lines from base R's qqline()
+  y <- quantile(vec[!is.na(vec)], c(0.25, 0.75))
+  x <- qnorm(c(0.25, 0.75))
+  slope <- diff(y)/diff(x)
+  int <- y[1L] - slope * x[1L]
+
+  geom_abline(slope = slope, intercept = int)
+}
+
+
+# Remove outliers
+age_data <- sqf2010[sqf2010$age < 99,]
+age_data <- age_data[age_data$age > 5,]
+
+# Throw out non-binary genders. (Why??)
+age_data = age_data[is.element(age_data$sex, c("M", "F")),]
+
+# Filter data by reported sex
+fdata <- age_data[age_data$sex== "F",]
+mdata <- age_data[age_data$sex== "M",]
+```
+
+```{r}
+# Plot distribution for females
+g <- ggplot(fdata) + theme_classic()
+g + geom_histogram(aes(age))
+g + stat_qq(aes(sample=age)) + ggplot_qqline(fdata$age)
+```
+
+```{r}
+# Plot distribution for males
+g <- ggplot(mdata) + theme_classic()
+g + geom_histogram(aes(age))
+g + stat_qq(aes(sample=age)) + ggplot_qqline(mdata$age) 
+```
+
+
+```{r}
+g <- grid.arrange(
+  # Comparative ditribution plot (Histogram)
+  ggplot(melt(age_data[,c("age", "sex")])) +
+    geom_histogram(aes(x = value, 
+                      y = 2*(..density..)/sum(..density..), 
+                      fill = sex), 
+                   binwidth = 5,
+                   position = "dodge") +
+    scale_y_continuous(labels=percent_format()) +
+    scale_fill_grey() + 
+    theme_classic() + 
+    labs(title = "Age Distribution vs. Sex (Histogram)",
+        x = "age",
+        y = "density"),
+  
+  # Comparative distribution plot (Quantiles)
+  ggplot(age_data) +
+    stat_qq(aes(sample = age, colour = factor(sex)),
+            size=0.5) +
+    scale_color_grey(name = "sex") +
+    theme_classic() +
+    ggtitle("(Quantiles)"),
+
+  nrow = 2
+)
+
+#ggsave("age_dist_vs_sex.png", g)
+```
+
+```{r}
+odata <- sqf2010[sqf2010$age < 99,]$age
+odata <- odata[odata > 5]
+hist(odata)
+qqnorm(odata)
+qqline(odata)
+```
+
+## Question IV.
+
+```{r}
+n_everyone = length(sqf2015$frisked)
+p_hat_everyone = sum(sqf2015$frisked)/n_everyone
+s_sem_everyone = sqrt(p_hat_everyone*(1 - p_hat_everyone)/(n_everyone - 1))
+
+id_refused <- sqf2015[sqf2015$typeofid == "REFUSED",]$frisked
+n_refused = length(id_refused)
+p_hat_refused = sum(id_refused)/n_refused
+s_sem_refused = sqrt(p_hat_refused * (1 - p_hat_refused) / (n_refused - 1))
+
+# since the sample size is large, we may assume that the
+# distribution of p_hat is normally distributed
+z_critical = abs(qnorm(0.025))
+
+# So, the interval is:
+c(p_hat_everyone - s_sem_everyone * z_critical, 
+  p_hat_everyone + s_sem_everyone * z_critical)
+c(p_hat_refused - s_sem_refused * z_critical, 
+  p_hat_refused + s_sem_refused * z_critical)
+
+df <- data.frame(
+  sample=factor(c(0,0)),
+  group=factor(c(1,2)),
+  mean = c(p_hat_everyone, p_hat_refused),
+  upper = c(p_hat_everyone + s_sem_everyone * z_critical,
+            p_hat_refused + s_sem_refused * z_critical),
+  lower = c(p_hat_everyone - s_sem_everyone * z_critical,
+            p_hat_refused - s_sem_refused * z_critical)
+)
+
+g <- ggplot(df, aes(mean, sample, color = group)) +
+  geom_errorbarh(aes(xmin=lower, 
+                     xmax=upper, 
+                     height=0.6)) +
+  scale_color_grey(name = "Sample",
+                   breaks = c(1,2),
+                   labels=c("Population", "Refused ID")) +
+  theme_classic() + 
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  labs(title = "Probability of being Frisked (95% Confidence Intervals)",
+       x = "probability",
+       y = "") +
+  xlim(0,1)
+
+g + coord_fixed(1/7)
+#ggsave("frisk_prob_vs_id.png", g, width = 7, height = 1.25, units = "in")
+```
+
+# Problem V.
+
+```{r}
+lmdata <- sqf2010[sqf2010$perstop < 120,]
+lmdata <- lmdata[lmdata$perstop > 0,]
+lmdata$perstop = log(lmdata$perstop)
+lm1 <- lm(perstop ~ arstmade + searched + inside + sumissue + frisked + weap + contrabn + radio + pf, data=lmdata)
+slm1 = step(lm1)
+summary(slm1)
+```
+
+```{r}
+rdata <- residuals(slm1)
+df <- data.frame(residuals = rdata)
+
+# Plot distribution for residuals
+g <- ggplot(df) + theme_classic()
+g <- grid.arrange(
+  # Histogram
+  g + geom_histogram(aes(x = residuals,
+                         y = (..density..)/sum(..density..)),
+                    binwidth=0.3) +
+    scale_y_continuous("density", labels=percent_format()) +
+    ggtitle("Linear Model Residuals (Histogram)"),
+  
+  # Normal QQ Plot
+  g + stat_qq(aes(sample = residuals)) + 
+    ggplot_qqline(rdata) + 
+    ggtitle("(Quantiles)"),
+  nrow = 2
+)
+
+#ggsave("residual_dist.png", g)
+```
+
+# Group Questions
+
+## Question I.
+
+```{r}
+mean(sqf2010[is.element(sqf2010$race, c("BLACK", "BLACK-HISPANIC", "WHITE-HISPANIC")),]$frisked)
+mean(sqf2010[is.element(sqf2010$race, c("BLACK", "BLACK-HISPANIC", "WHITE-HISPANIC")) & sqf2010$frisked == 1,]$weap)
+
+mean(sqf2010[(sqf2010$race == "WHITE"),]$frisked)
+mean(sqf2010[sqf2010$race == "WHITE" & sqf2010$frisked == 1,]$weap)
+```
+
+```{r}
+data = ddply(sqf2010, .(race), summarise, 
+             probfrisk = mean(frisked))
+g <- ggplot(data) +
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 70, 
+                                   hjust=1, 
+                                   size=rel(0.85)))
+
+a <- g + geom_bar(stat = "identity", 
+                  aes(race, probfrisk)) +
+  labs(x = "Race", 
+       y = "Probability of Being Frisked") +
+  ggtitle("Probability of Being Frisked by Race")
+a
+
+data2 = ddply(sqf2010[sqf2010$frisked == 1,], .(race), summarise, 
+             probweap = mean(weap))
+
+g2 <- ggplot(data2) +
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 70, 
+                                   hjust=1, 
+                                   size=rel(0.85)))
+
+b <- g2 + geom_bar(stat = "identity", 
+                   aes(race, probweap)) +
+  labs(x = "Race", 
+       y = "Probability of Having a Weapon") +
+  ggtitle("Weapon Posession by Race (Frisked Pedestrians)")
+b
+
+#ggsave("frisk_prob_vs_race.png", g)
+#ggsave("weap_prob_for_frisked_by_race.png", g)
+```
+
+## Question II.
+
+```{r}
+mean(sqf2010$frisked)
+mean(sqf2010[sqf2010$frisked == 1,]$weap)
+```
+
+## Question III.
+
+```{r}
+mean(sqf2010$arstmade)
+mean(sqf2010$sumissue)
+```
